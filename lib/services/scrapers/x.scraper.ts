@@ -1,7 +1,6 @@
 import type { ContentScraper, ScrapeResult } from "@/lib/services/scraper.service";
 import { ScrapeError } from "@/lib/services/scraper.service";
-
-const SYNDICATION_URL = "https://cdn.syndication.twimg.com/tweet-result";
+import scraperConfig from "@/lib/config/scraper.config.json";
 
 export class XScraper implements ContentScraper {
   async scrape(url: string): Promise<ScrapeResult> {
@@ -10,7 +9,7 @@ export class XScraper implements ContentScraper {
       throw new ScrapeError(`Could not extract tweet ID from URL`, url);
     }
 
-    const apiUrl = `${SYNDICATION_URL}?id=${tweetId}&token=x`;
+    const apiUrl = `${scraperConfig.x.syndicationUrl}?id=${tweetId}&token=x`;
 
     let response: Response;
     try {
@@ -33,7 +32,8 @@ export class XScraper implements ContentScraper {
     const text: string = data.text || "";
     const userName: string = data.user?.name || "Unknown";
 
-    const truncatedText = text.length > 100 ? text.slice(0, 100) + "..." : text;
+    const maxLen = scraperConfig.x.titleMaxLength;
+    const truncatedText = text.length > maxLen ? text.slice(0, maxLen) + "..." : text;
     const title = `${userName}: ${truncatedText}`;
 
     const thumbnailUrl =

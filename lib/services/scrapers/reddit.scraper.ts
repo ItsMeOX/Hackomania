@@ -1,9 +1,6 @@
 import type { ContentScraper, ScrapeResult } from "@/lib/services/scraper.service";
 import { ScrapeError } from "@/lib/services/scraper.service";
-
-const USER_AGENT =
-  "Mozilla/5.0 (compatible; HackomaniaBot/1.0; +https://hackomania.example.com)";
-const MAX_CONTENT_LENGTH = 10_000;
+import scraperConfig from "@/lib/config/scraper.config.json";
 
 export class RedditScraper implements ContentScraper {
   async scrape(url: string): Promise<ScrapeResult> {
@@ -12,7 +9,7 @@ export class RedditScraper implements ContentScraper {
     let response: Response;
     try {
       response = await fetch(jsonUrl, {
-        headers: { "User-Agent": USER_AGENT },
+        headers: { "User-Agent": scraperConfig.shared.userAgent },
         redirect: "follow",
       });
     } catch (error) {
@@ -43,7 +40,7 @@ export class RedditScraper implements ContentScraper {
       description: postData.subreddit
         ? `Posted in r/${postData.subreddit} by u/${postData.author}`
         : `Posted by u/${postData.author}`,
-      content: content.slice(0, MAX_CONTENT_LENGTH),
+      content: content.slice(0, scraperConfig.shared.maxContentLength),
       thumbnailUrl: this.extractThumbnail(postData),
     };
   }
@@ -51,12 +48,10 @@ export class RedditScraper implements ContentScraper {
   private buildJsonUrl(url: string): string {
     const parsed = new URL(url);
     const cleanPath = parsed.pathname.replace(/\/$/, "");
-    return `https://www.reddit.com${cleanPath}.json`;
+    return `${scraperConfig.reddit.baseUrl}${cleanPath}.json`;
   }
 
-  private extractPostData(
-    data: unknown
-  ): RedditPostData | null {
+  private extractPostData(data: unknown): RedditPostData | null {
     if (!Array.isArray(data) || data.length === 0) return null;
 
     const listing = data[0]?.data?.children?.[0]?.data;
@@ -85,10 +80,7 @@ export class RedditScraper implements ContentScraper {
       return postData.preview.replace(/&amp;/g, "&");
     }
 
-    if (
-      postData.thumbnail &&
-      postData.thumbnail.startsWith("http")
-    ) {
+    if (postData.thumbnail && postData.thumbnail.startsWith("http")) {
       return postData.thumbnail;
     }
 
