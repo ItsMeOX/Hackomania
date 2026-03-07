@@ -7,19 +7,19 @@ export function getIconAndName(claimSrc: ClaimSource) {
     case ClaimSource.X:
       return { icon: '/x.png', name: 'X' };
     case ClaimSource.TIKTOK:
-      return { icon: '/fb.png', name: 'TikTok' };
+      return { icon: '/tiktok.jpg', name: 'TikTok' };
     case ClaimSource.INSTAGRAM:
-      return { icon: '/fb.png', name: 'Instagram' };
+      return { icon: '/instagram.png', name: 'Instagram' };
     case ClaimSource.REDDIT:
-      return { icon: '/fb.png', name: 'Reddit' };
+      return { icon: '/reddit.png', name: 'Reddit' };
     case ClaimSource.WEBPAGE:
       return { icon: '/search_gray.svg', name: 'Web' };
     case ClaimSource.WHATSAPP:
-      return { icon: '/platform-logos/whatsapp.png', name: 'WhatsApp' };
+      return { icon: '/whatsapp.jpg', name: 'WhatsApp' };
     case ClaimSource.TELEGRAM:
-      return { icon: '/platform-logos/telegram.png', name: 'Telegram' };
+      return { icon: '/telegram.jpg', name: 'Telegram' };
     case ClaimSource.SIGNAL:
-      return { icon: '/platform-logos/signal.png', name: 'Signal' };
+      return { icon: '/signal.png', name: 'Signal' };
     default:
       return { icon: '/search_gray.svg', name: 'Other' };
   }
