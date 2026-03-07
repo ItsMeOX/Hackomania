@@ -18,6 +18,9 @@ jest.mock("@/lib/prisma", () => ({
       findUnique: jest.fn(),
       create: jest.fn(),
     },
+    comment: {
+      create: jest.fn(),
+    },
     $transaction: jest.fn(),
   },
 }));
@@ -27,6 +30,9 @@ import { prisma } from "@/lib/prisma";
 const mockPostFindUnique = prisma.post.findUnique as jest.Mock;
 const mockPostCreate = prisma.post.create as jest.Mock;
 const mockReportFindUnique = prisma.report.findUnique as jest.Mock;
+const mockReportCreate = prisma.report.create as jest.Mock;
+const mockPostUpdate = prisma.post.update as jest.Mock;
+const mockCommentCreate = prisma.comment.create as jest.Mock;
 const mockTransaction = prisma.$transaction as jest.Mock;
 
 const userId = "550e8400-e29b-41d4-a716-446655440000";
@@ -43,7 +49,7 @@ const mockPost = {
   id: "post-uuid-1",
   sourceUrl: "https://example.com/article",
   normalizedUrl: "https://example.com/article",
-  scrapeStatus: "pending",
+  processedStatus: "pending",
   reportCount: 0,
   createdAt: new Date("2026-01-01"),
   updatedAt: new Date("2026-01-01"),
@@ -135,7 +141,7 @@ describe("createReport", () => {
     expect(mockTransaction).not.toHaveBeenCalled();
   });
 
-  it("creates post with pending scrapeStatus for new URLs", async () => {
+  it("creates post with pending processedStatus and derived sourceType for new URLs", async () => {
     mockPostFindUnique.mockResolvedValue(null);
     mockPostCreate.mockResolvedValue(mockPost);
     mockReportFindUnique.mockResolvedValue(null);
@@ -150,7 +156,8 @@ describe("createReport", () => {
       data: {
         sourceUrl: validInput.sourceUrl,
         normalizedUrl: "https://example.com/article",
-        scrapeStatus: "pending",
+        sourceType: "WEBPAGE",
+        processedStatus: "pending",
       },
     });
   });
@@ -166,6 +173,31 @@ describe("createReport", () => {
     await createReport(userId, validInput);
 
     expect(mockTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("creates a comment with report content as JSON when report is submitted", async () => {
+    mockPostFindUnique.mockResolvedValue(mockPost);
+    mockReportFindUnique.mockResolvedValue(null);
+    mockTransaction.mockResolvedValue([
+      mockReport,
+      { ...mockPost, reportCount: 1 },
+    ]);
+
+    await createReport(userId, validInput);
+
+    expect(mockCommentCreate).toHaveBeenCalledTimes(1);
+    expect(mockCommentCreate).toHaveBeenCalledWith({
+      data: {
+        postId: mockPost.id,
+        userId,
+        content: JSON.stringify({
+          type: "report",
+          headline: validInput.headline,
+          reportDescription: validInput.reportDescription,
+          supportingEvidence: validInput.supportingEvidence,
+        }),
+      },
+    });
   });
 
   it("stores supportingEvidence as null when not provided", async () => {

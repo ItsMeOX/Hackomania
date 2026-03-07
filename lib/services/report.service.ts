@@ -1,20 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { normalizeUrl } from "@/lib/utils/normalize-url";
+import { getSourceType } from "@/lib/utils/get-source-type";
 import { processPost } from "@/lib/services/post-processing.service";
+import { buildReportCommentContent } from "@/lib/types/comment";
+import type { ReportResult } from "@/lib/types/report";
 import type { CreateReportInput } from "@/lib/validators/report.validator";
 
-export type ReportResult = {
-  report: {
-    id: string;
-    headline: string;
-    reportDescription: string;
-    supportingEvidence: string | null;
-    platform: string;
-    status: string;
-    createdAt: Date;
-  };
-  postReportCount: number;
-};
+export type { ReportResult } from "@/lib/types/report";
 
 export async function createReport(
   userId: string,
@@ -32,7 +24,8 @@ export async function createReport(
       data: {
         sourceUrl: input.sourceUrl,
         normalizedUrl: normalized,
-        scrapeStatus: "pending",
+        sourceType: getSourceType(input.sourceUrl),
+        processedStatus: "pending",
       },
     });
     isNewPost = true;
@@ -59,6 +52,17 @@ export async function createReport(
     prisma.post.update({
       where: { id: post.id },
       data: { reportCount: { increment: 1 } },
+    }),
+    prisma.comment.create({
+      data: {
+        postId: post.id,
+        userId,
+        content: buildReportCommentContent({
+          headline: input.headline,
+          reportDescription: input.reportDescription,
+          supportingEvidence: input.supportingEvidence ?? null,
+        }),
+      },
     }),
   ]);
 
