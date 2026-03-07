@@ -15,7 +15,9 @@ export default function Header() {
           </div>
         </div>
         <div className={styles.sepLine} />
-        <button className={styles.button}>Sign up</button>
+        <button className={styles.button}>
+          <Link href='/auth/register'>Sign up</Link>
+        </button>
       </div>
     </div>
   );
