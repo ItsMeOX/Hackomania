@@ -1,0 +1,54 @@
+.container {
+  max-width: 1200px;
+  margin-inline: auto;
+  margin-top: 50px;
+  padding-bottom: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
+.backButton {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #858585;
+  font-weight: 400;
+}
+
+.backButton:hover {
+  text-decoration: underline;
+}
+
+.title {
+  margin-top: 20px;
+  font-size: 26px;
+  font-weight: 600;
+}
+
+.thumbnail {
+  width: 100%;
+  height: 500px;
+}
+
+.section {
+  margin-top: 30px;
+  display: flex;
+  flex-direction: column;
+}
+
+.sectionTitle {
+  font-weight: 600;
+  font-size: 20px;
+}
+
+.srcWrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.commentSection {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
