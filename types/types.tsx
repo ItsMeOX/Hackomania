@@ -15,7 +15,7 @@ export type PopularClaim = {
 };
 
 export enum ClaimSource {
-  TIKTOK,
-  X,
-  FACEBOOK,
+  TIKTOK = 'TIKTOK',
+  X = 'X',
+  FACEBOOK = 'FACEBOOK',
 }

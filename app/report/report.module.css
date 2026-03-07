@@ -1,0 +1,50 @@
+.container {
+}
+
+.box {
+  margin-top: 50px;
+  margin-inline: auto;
+  max-width: 1200px;
+}
+
+.title {
+  font-size: 32px;
+  font-weight: 600;
+  color: #141414;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  margin-top: 10px;
+  margin-bottom: 30px;
+}
+
+.submitSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 50px;
+}
+
+.submitButton {
+  width: 100%;
+  color: white;
+  background-color: #3c5ae1;
+  cursor: pointer;
+  padding: 12px 30px;
+  border-radius: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.submitButton:hover {
+  background-color: #2346e3;
+}
+
+.submitSection input {
+  color: #989898;
+}
