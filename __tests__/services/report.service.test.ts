@@ -1,4 +1,11 @@
+jest.mock("@/lib/services/post-processing.service", () => ({
+  processPost: jest.fn().mockResolvedValue(undefined),
+}));
+
 import { createReport, ReportError } from "@/lib/services/report.service";
+import { processPost } from "@/lib/services/post-processing.service";
+
+const mockProcessPost = processPost as jest.Mock;
 
 jest.mock("@/lib/prisma", () => ({
   prisma: {
@@ -192,6 +199,50 @@ describe("createReport", () => {
 
     expect(result.report).not.toHaveProperty("postId");
     expect(result.report).not.toHaveProperty("userId");
+  });
+
+  it("fires processPost for new posts (fire-and-forget)", async () => {
+    mockPostFindUnique.mockResolvedValue(null);
+    mockPostCreate.mockResolvedValue(mockPost);
+    mockReportFindUnique.mockResolvedValue(null);
+    mockTransaction.mockResolvedValue([
+      mockReport,
+      { ...mockPost, reportCount: 1 },
+    ]);
+
+    await createReport(userId, validInput);
+
+    expect(mockProcessPost).toHaveBeenCalledWith(mockPost.id);
+  });
+
+  it("does not fire processPost for existing posts", async () => {
+    mockPostFindUnique.mockResolvedValue(mockPost);
+    mockReportFindUnique.mockResolvedValue(null);
+    mockTransaction.mockResolvedValue([
+      mockReport,
+      { ...mockPost, reportCount: 2 },
+    ]);
+
+    await createReport(userId, validInput);
+
+    expect(mockProcessPost).not.toHaveBeenCalled();
+  });
+
+  it("does not block report creation if processPost fails", async () => {
+    mockPostFindUnique.mockResolvedValue(null);
+    mockPostCreate.mockResolvedValue(mockPost);
+    mockReportFindUnique.mockResolvedValue(null);
+    mockTransaction.mockResolvedValue([
+      mockReport,
+      { ...mockPost, reportCount: 1 },
+    ]);
+    mockProcessPost.mockRejectedValue(new Error("Processing failed"));
+    const consoleSpy = jest.spyOn(console, "error").mockImplementation();
+
+    const result = await createReport(userId, validInput);
+
+    expect(result.report.id).toBe("report-uuid-1");
+    consoleSpy.mockRestore();
   });
 });
 

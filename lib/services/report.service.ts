@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { normalizeUrl } from "@/lib/utils/normalize-url";
+import { processPost } from "@/lib/services/post-processing.service";
 import type { CreateReportInput } from "@/lib/validators/report.validator";
 
 export type ReportResult = {
@@ -25,6 +26,7 @@ export async function createReport(
     where: { normalizedUrl: normalized },
   });
 
+  let isNewPost = false;
   if (!post) {
     post = await prisma.post.create({
       data: {
@@ -33,6 +35,7 @@ export async function createReport(
         scrapeStatus: "pending",
       },
     });
+    isNewPost = true;
   }
 
   const existing = await prisma.report.findUnique({
@@ -58,6 +61,12 @@ export async function createReport(
       data: { reportCount: { increment: 1 } },
     }),
   ]);
+
+  if (isNewPost) {
+    processPost(post.id).catch((err) =>
+      console.error("Background processing failed:", err)
+    );
+  }
 
   return {
     report: {
