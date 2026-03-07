@@ -1,0 +1,28 @@
+{
+  "model": "gpt-4o-mini",
+  "temperature": 0.3,
+  "responseFormat": "json_object",
+  "scoring": {
+    "min": 0,
+    "max": 100,
+    "defaultOnParseFailure": 50
+  },
+  "categories": {
+    "maxCount": 3,
+    "minConfidence": 0.5
+  },
+  "userPrompt": {
+    "maxScrapedContentLength": 4000
+  },
+  "systemPrompt": {
+    "role": "You are a fact-checking analyst. Analyze the provided content and produce a JSON response with these exact fields:",
+    "responseSchema": "{\n  \"aiSummary\": \"A concise summary of the claim and its credibility (2-4 sentences)\",\n  \"aiCredibilityScore\": \"<number 0-100, where 0 = not credible at all, 100 = highly credible>\",\n  \"aiTransparencyNotes\": \"Detailed explanation of how the score was determined, which sources were consulted, and key factors that influenced the assessment\",\n  \"categories\": [{\"slug\": \"<category-slug>\", \"confidence\": \"<0.0-1.0>\"}]\n}",
+    "guidelines": [
+      "Cross-reference the scraped content with web search results",
+      "Consider the user reports as additional signal but verify independently",
+      "Be specific in transparency notes about which sources agree or disagree",
+      "Assign 1-3 categories maximum, only if confidence > 0.5",
+      "If insufficient evidence exists, assign a mid-range score (40-60) and note the uncertainty"
+    ]
+  }
+}

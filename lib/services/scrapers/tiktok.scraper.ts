@@ -1,11 +1,10 @@
 import type { ContentScraper, ScrapeResult } from "@/lib/services/scraper.service";
 import { ScrapeError } from "@/lib/services/scraper.service";
-
-const OEMBED_URL = "https://www.tiktok.com/oembed";
+import scraperConfig from "@/lib/config/scraper.config.json";
 
 export class TikTokScraper implements ContentScraper {
   async scrape(url: string): Promise<ScrapeResult> {
-    const oembedUrl = `${OEMBED_URL}?url=${encodeURIComponent(url)}`;
+    const oembedUrl = `${scraperConfig.tiktok.oembedUrl}?url=${encodeURIComponent(url)}`;
 
     let response: Response;
     try {

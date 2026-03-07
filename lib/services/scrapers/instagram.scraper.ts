@@ -1,7 +1,6 @@
 import type { ContentScraper, ScrapeResult } from "@/lib/services/scraper.service";
 import { ScrapeError } from "@/lib/services/scraper.service";
-
-const OEMBED_URL = "https://graph.facebook.com/v22.0/instagram_oembed";
+import scraperConfig from "@/lib/config/scraper.config.json";
 
 export class InstagramScraper implements ContentScraper {
   async scrape(url: string): Promise<ScrapeResult> {
@@ -13,7 +12,7 @@ export class InstagramScraper implements ContentScraper {
       );
     }
 
-    const oembedUrl = `${OEMBED_URL}?url=${encodeURIComponent(url)}&access_token=${accessToken}`;
+    const oembedUrl = `${scraperConfig.instagram.oembedUrl}?url=${encodeURIComponent(url)}&access_token=${accessToken}`;
 
     let response: Response;
     try {

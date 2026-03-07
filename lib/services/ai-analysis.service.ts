@@ -1,7 +1,6 @@
 import OpenAI from "openai";
 import type { SearchResult } from "@/lib/services/search.service";
-
-const MODEL = "gpt-4o-mini";
+import aiConfig from "@/lib/config/ai-analysis.config.json";
 
 export type AnalysisInput = {
   sourceUrl: string;
@@ -36,13 +35,13 @@ export async function analyzePost(
   const userPrompt = buildUserPrompt(input);
 
   const response = await openai.chat.completions.create({
-    model: MODEL,
-    response_format: { type: "json_object" },
+    model: aiConfig.model,
+    response_format: { type: aiConfig.responseFormat as "json_object" },
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
     ],
-    temperature: 0.3,
+    temperature: aiConfig.temperature,
   });
 
   const content = response.choices[0]?.message?.content;
@@ -53,25 +52,18 @@ export async function analyzePost(
   return parseAnalysisResponse(content);
 }
 
-// TechDebt: Placeholder as of now (need to be in separate file in either json or yaml for prompt)
 function buildSystemPrompt(categorySlugs: string[]): string {
-  return `You are a fact-checking analyst. Analyze the provided content and produce a JSON response with these exact fields:
+  const { role, responseSchema, guidelines } = aiConfig.systemPrompt;
+  const guidelinesText = guidelines.map((g) => `- ${g}`).join("\n");
 
-{
-  "aiSummary": "A concise summary of the claim and its credibility (2-4 sentences)",
-  "aiCredibilityScore": <number 0-100, where 0 = not credible at all, 100 = highly credible>,
-  "aiTransparencyNotes": "Detailed explanation of how the score was determined, which sources were consulted, and key factors that influenced the assessment",
-  "categories": [{"slug": "<category-slug>", "confidence": <0.0-1.0>}]
-}
+  return `${role}
+
+${responseSchema}
 
 Available category slugs: ${categorySlugs.join(", ")}
 
 Guidelines:
-- Cross-reference the scraped content with web search results
-- Consider the user reports as additional signal but verify independently
-- Be specific in transparency notes about which sources agree or disagree
-- Assign 1-3 categories maximum, only if confidence > 0.5
-- If insufficient evidence exists, assign a mid-range score (40-60) and note the uncertainty`;
+${guidelinesText}`;
 }
 
 function buildUserPrompt(input: AnalysisInput): string {
@@ -80,7 +72,10 @@ function buildUserPrompt(input: AnalysisInput): string {
   sections.push(`Source URL: ${input.sourceUrl}`);
 
   if (input.scrapedContent) {
-    const trimmed = input.scrapedContent.slice(0, 4000);
+    const trimmed = input.scrapedContent.slice(
+      0,
+      aiConfig.userPrompt.maxScrapedContentLength
+    );
     sections.push(`\nScraped Content:\n${trimmed}`);
   } else {
     sections.push("\nScraped Content: [Unable to scrape - content unavailable]");
@@ -112,13 +107,21 @@ function parseAnalysisResponse(content: string): AnalysisResult {
   const aiTransparencyNotes = String(parsed.aiTransparencyNotes || "");
 
   let aiCredibilityScore = Number(parsed.aiCredibilityScore);
-  if (isNaN(aiCredibilityScore)) aiCredibilityScore = 50;
-  aiCredibilityScore = Math.max(0, Math.min(100, aiCredibilityScore));
+  if (isNaN(aiCredibilityScore))
+    aiCredibilityScore = aiConfig.scoring.defaultOnParseFailure;
+  aiCredibilityScore = Math.max(
+    aiConfig.scoring.min,
+    Math.min(aiConfig.scoring.max, aiCredibilityScore)
+  );
 
   const categories: { slug: string; confidence: number }[] = [];
   if (Array.isArray(parsed.categories)) {
     for (const cat of parsed.categories) {
-      if (cat?.slug && typeof cat.confidence === "number" && cat.confidence > 0.5) {
+      if (
+        cat?.slug &&
+        typeof cat.confidence === "number" &&
+        cat.confidence > aiConfig.categories.minConfidence
+      ) {
         categories.push({
           slug: String(cat.slug),
           confidence: Math.max(0, Math.min(1, cat.confidence)),

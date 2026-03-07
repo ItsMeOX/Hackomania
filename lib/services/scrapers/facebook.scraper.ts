@@ -1,12 +1,11 @@
 import * as cheerio from "cheerio";
 import type { ContentScraper, ScrapeResult } from "@/lib/services/scraper.service";
 import { ScrapeError } from "@/lib/services/scraper.service";
-
-const OEMBED_URL = "https://www.facebook.com/plugins/post/oembed.json";
+import scraperConfig from "@/lib/config/scraper.config.json";
 
 export class FacebookScraper implements ContentScraper {
   async scrape(url: string): Promise<ScrapeResult> {
-    const oembedUrl = `${OEMBED_URL}?url=${encodeURIComponent(url)}`;
+    const oembedUrl = `${scraperConfig.facebook.oembedUrl}?url=${encodeURIComponent(url)}`;
 
     let response: Response;
     try {

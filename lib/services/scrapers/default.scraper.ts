@@ -1,21 +1,20 @@
 import * as cheerio from "cheerio";
 import type { ContentScraper, ScrapeResult } from "@/lib/services/scraper.service";
 import { ScrapeError } from "@/lib/services/scraper.service";
-
-const SCRAPE_TIMEOUT_MS = 10_000;
-const USER_AGENT =
-  "Mozilla/5.0 (compatible; HackomaniaBot/1.0; +https://hackomania.example.com)";
-const MAX_CONTENT_LENGTH = 10_000;
+import scraperConfig from "@/lib/config/scraper.config.json";
 
 export class DefaultScraper implements ContentScraper {
   async scrape(url: string): Promise<ScrapeResult> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), SCRAPE_TIMEOUT_MS);
+    const timeout = setTimeout(
+      () => controller.abort(),
+      scraperConfig.default.timeoutMs
+    );
 
     let response: Response;
     try {
       response = await fetch(url, {
-        headers: { "User-Agent": USER_AGENT },
+        headers: { "User-Agent": scraperConfig.shared.userAgent },
         signal: controller.signal,
         redirect: "follow",
       });
@@ -42,7 +41,7 @@ export class DefaultScraper implements ContentScraper {
   private extractContent(html: string): ScrapeResult {
     const $ = cheerio.load(html);
 
-    $("script, style, nav, footer, header, iframe, noscript").remove();
+    $(scraperConfig.default.stripElements).remove();
 
     const title =
       $("meta[property='og:title']").attr("content") ||
@@ -57,7 +56,7 @@ export class DefaultScraper implements ContentScraper {
     const thumbnailUrl =
       $("meta[property='og:image']").attr("content") || null;
 
-    const content = $("article, main, [role='main']")
+    const content = $(scraperConfig.default.contentSelectors)
       .first()
       .text()
       .replace(/\s+/g, " ")
@@ -69,7 +68,7 @@ export class DefaultScraper implements ContentScraper {
     return {
       title,
       description,
-      content: fallbackContent.slice(0, MAX_CONTENT_LENGTH),
+      content: fallbackContent.slice(0, scraperConfig.shared.maxContentLength),
       thumbnailUrl,
     };
   }
