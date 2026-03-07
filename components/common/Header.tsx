@@ -8,10 +8,10 @@ export default function Header() {
         <Link href='/' className={styles.logo}></Link>
         <div className={styles.pageNavs}>
           <div className={styles.pageNav}>
-            <Link href='/forum'>Forum</Link>
+            <Link href='/listing'>Forum</Link>
           </div>
           <div className={styles.pageNav}>
-            <Link href='/reports'>Report</Link>
+            <Link href='/report'>Report</Link>
           </div>
         </div>
         <div className={styles.sepLine} />
