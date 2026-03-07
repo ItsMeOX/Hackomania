@@ -18,9 +18,9 @@
 }
 
 .logo {
-  background-color: gray;
-  width: 200px;
   height: 100%;
+  font-size: 26px;
+  font-weight: 700;
 }
 
 .pageNavs {

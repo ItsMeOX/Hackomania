@@ -35,7 +35,9 @@ export default function Header() {
   return (
     <div className={styles.container}>
       <div className={styles.box}>
-        <Link href="/" className={styles.logo} />
+        <Link href='/' className={styles.logo}>
+          Fact<span style={{ color: '#3c5ae1' }}>Guard</span>
+        </Link>
         <div className={styles.pageNavs}>
           <div className={styles.pageNav}>
             <Link href="/report">Report</Link>
