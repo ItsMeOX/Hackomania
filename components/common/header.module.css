@@ -26,7 +26,7 @@
 .pageNavs {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 40px;
   margin-left: auto;
 }
 
@@ -34,7 +34,7 @@
   width: 1px;
   height: 100%;
   background-color: #e5e7eb;
-  margin-inline: 20px;
+  margin-inline: 30px;
 }
 
 .button {
