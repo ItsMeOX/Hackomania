@@ -7,6 +7,7 @@ export type PostRankingItem = {
   sourceType: string;
   thumbnailUrl: string | null;
   reportCount: number;
+  commentCount: number;
   latestReportAt: Date | null;
 };
 
@@ -50,6 +51,7 @@ export async function getPostRanking(
         thumbnailUrl: true,
         reportCount: true,
         createdAt: true,
+        _count: { select: { comments: true } },
         reports: {
           orderBy: { createdAt: "desc" },
           take: 1,
@@ -69,6 +71,7 @@ export async function getPostRanking(
       sourceType: p.sourceType,
       thumbnailUrl: p.thumbnailUrl,
       reportCount: p.reportCount,
+      commentCount: p._count.comments,
       latestReportAt: p.reports[0]?.createdAt ?? null,
     })),
     totalCount,

@@ -66,6 +66,7 @@ export async function getCategoryRanking(
           sourceType: true,
           thumbnailUrl: true,
           reportCount: true,
+          _count: { select: { comments: true } },
           reports: {
             orderBy: { createdAt: "desc" },
             take: 1,
@@ -89,6 +90,7 @@ export async function getCategoryRanking(
       sourceType: p.sourceType,
       thumbnailUrl: p.thumbnailUrl,
       reportCount: p.reportCount,
+      commentCount: p._count.comments,
       latestReportAt: p.reports[0]?.createdAt ?? null,
     })),
   }));

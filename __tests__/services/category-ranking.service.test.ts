@@ -34,6 +34,7 @@ function makePost(overrides: Record<string, unknown> = {}) {
     sourceType: "WEBPAGE",
     thumbnailUrl: "https://example.com/thumb.jpg",
     reportCount: 25,
+    _count: { comments: 0 },
     reports: [{ createdAt: new Date("2026-03-05T12:00:00Z") }],
     ...overrides,
   };
@@ -105,6 +106,7 @@ describe("getCategoryRanking", () => {
     const result = await getCategoryRanking({ limit: 10 });
 
     expect(result.categories[0].posts[0].latestReportAt).toEqual(reportDate);
+    expect(result.categories[0].posts[0].commentCount).toBe(0);
   });
 
   it("returns null latestReportAt when post has no reports", async () => {
@@ -157,6 +159,8 @@ describe("getCategoryRanking", () => {
     expect(selectArg).toHaveProperty("sourceType");
     expect(selectArg).toHaveProperty("thumbnailUrl");
     expect(selectArg).toHaveProperty("reportCount");
+    expect(selectArg).toHaveProperty("_count");
+    expect(selectArg._count).toEqual({ select: { comments: true } });
     expect(selectArg).toHaveProperty("reports");
     expect(selectArg).not.toHaveProperty("scrapedContent");
     expect(selectArg).not.toHaveProperty("aiSummary");
