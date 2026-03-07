@@ -1,19 +1,7 @@
 import Image from 'next/image';
 import styles from './claimrow.module.css';
 import { ClaimSource, PopularClaim, Post } from '@/types/types';
-
-function getIconAndName(claimSrc: ClaimSource) {
-  switch (claimSrc) {
-    case ClaimSource.FACEBOOK:
-      return { icon: '/fb.png', name: 'Facebook' };
-    case ClaimSource.X:
-      return { icon: '/x.png', name: 'X' };
-    case ClaimSource.TIKTOK:
-      return { icon: '/fb.png', name: 'TikTok' };
-    default:
-      return { icon: '', name: 'unknown source' };
-  }
-}
+import { getIconAndName } from '@/app/utils/claimSource';
 
 export default function ClaimRow({ imgUrl, posts, title }: PopularClaim) {
   return (
