@@ -2,6 +2,7 @@ import Image from 'next/image';
 import styles from './home.module.css';
 import { ClaimSource, PopularClaim } from '@/types/types';
 import PopularClaims from '@/components/home/PopularClaims';
+import Link from 'next/link';
 
 const popularClaims: PopularClaim[] = [
   {
@@ -74,10 +75,10 @@ export default function Home() {
           We track, verify, and debunk false claims in real-time so you can
           navigate the information landscape with confidence.
         </div>
-        <button className={styles.verifyButton}>
+        <Link href='/report' className={styles.verifyButton}>
           <Image src='/search.svg' alt='search' width={18} height={18} />
           Verify a Claim
-        </button>
+        </Link>
       </div>
       <div className={styles.popularSection}>
         <div className={styles.popularHeader}>
