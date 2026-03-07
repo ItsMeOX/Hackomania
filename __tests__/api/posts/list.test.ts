@@ -35,6 +35,7 @@ const mockPostData = {
       sourceType: "WEBPAGE",
       thumbnailUrl: "https://example.com/thumb.jpg",
       reportCount: 10,
+      commentCount: 0,
       latestReportAt: new Date("2026-03-05T12:00:00Z"),
     },
   ],
@@ -82,6 +83,7 @@ describe("GET /api/posts", () => {
           sourceType: "WEBPAGE",
           thumbnailUrl: null,
           reportCount: 15,
+          commentCount: 3,
           latestReportAt: new Date("2026-03-05T12:00:00Z"),
         },
         {
@@ -90,6 +92,7 @@ describe("GET /api/posts", () => {
           sourceType: "WEBPAGE",
           thumbnailUrl: null,
           reportCount: 8,
+          commentCount: 1,
           latestReportAt: new Date("2026-03-04T10:00:00Z"),
         },
       ],

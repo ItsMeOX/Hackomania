@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizeUrl } from "@/lib/utils/normalize-url";
 import { getSourceType } from "@/lib/utils/get-source-type";
 import { processPost } from "@/lib/services/post-processing.service";
+import { buildReportCommentContent } from "@/lib/types/comment";
 import type { CreateReportInput } from "@/lib/validators/report.validator";
 
 export type ReportResult = {
@@ -61,6 +62,17 @@ export async function createReport(
     prisma.post.update({
       where: { id: post.id },
       data: { reportCount: { increment: 1 } },
+    }),
+    prisma.comment.create({
+      data: {
+        postId: post.id,
+        userId,
+        content: buildReportCommentContent({
+          headline: input.headline,
+          reportDescription: input.reportDescription,
+          supportingEvidence: input.supportingEvidence ?? null,
+        }),
+      },
     }),
   ]);
 

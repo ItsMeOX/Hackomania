@@ -25,6 +25,7 @@ function makePost(overrides: Record<string, unknown> = {}) {
     thumbnailUrl: "https://example.com/thumb.jpg",
     reportCount: 5,
     createdAt: new Date("2026-03-01T00:00:00Z"),
+    _count: { comments: 0 },
     reports: [{ createdAt: new Date("2026-03-05T12:00:00Z") }],
     ...overrides,
   };
@@ -55,6 +56,7 @@ describe("getPostRanking", () => {
     expect(result.totalCount).toBe(25);
     expect(result.page).toBe(1);
     expect(result.totalPages).toBe(3);
+    expect(result.posts[0].commentCount).toBe(0);
   });
 
   it("calculates totalPages correctly for exact division", async () => {
@@ -177,6 +179,17 @@ describe("getPostRanking", () => {
     );
   });
 
+  it("returns commentCount from _count.comments", async () => {
+    mockPostFindMany.mockResolvedValue([
+      makePost({ _count: { comments: 7 } }),
+    ]);
+    mockPostCount.mockResolvedValue(1);
+
+    const result = await getPostRanking({ limit: 10, page: 1 });
+
+    expect(result.posts[0].commentCount).toBe(7);
+  });
+
   it("selects only required fields for the response", async () => {
     mockPostFindMany.mockResolvedValue([]);
     mockPostCount.mockResolvedValue(0);
@@ -189,6 +202,8 @@ describe("getPostRanking", () => {
     expect(selectArg).toHaveProperty("sourceType");
     expect(selectArg).toHaveProperty("thumbnailUrl");
     expect(selectArg).toHaveProperty("reportCount");
+    expect(selectArg).toHaveProperty("_count");
+    expect(selectArg._count).toEqual({ select: { comments: true } });
     expect(selectArg).toHaveProperty("reports");
     expect(selectArg).not.toHaveProperty("scrapedContent");
     expect(selectArg).not.toHaveProperty("aiSummary");
