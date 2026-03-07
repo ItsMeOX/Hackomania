@@ -12,50 +12,16 @@ export type PostRankingItem = {
 
 export type PostRankingResult = {
   posts: PostRankingItem[];
-  nextCursor: string | null;
+  totalCount: number;
+  page: number;
+  totalPages: number;
 };
-
-type CursorPayload = {
-  reportCount: number;
-  createdAt: string;
-  id: string;
-};
-
-export function encodeCursor(post: {
-  reportCount: number;
-  createdAt: Date;
-  id: string;
-}): string {
-  const payload: CursorPayload = {
-    reportCount: post.reportCount,
-    createdAt: post.createdAt.toISOString(),
-    id: post.id,
-  };
-  return Buffer.from(JSON.stringify(payload)).toString("base64url");
-}
-
-export function decodeCursor(cursor: string): CursorPayload {
-  try {
-    const json = Buffer.from(cursor, "base64url").toString("utf-8");
-    const parsed = JSON.parse(json);
-    if (
-      typeof parsed.reportCount !== "number" ||
-      typeof parsed.createdAt !== "string" ||
-      typeof parsed.id !== "string"
-    ) {
-      throw new Error("Invalid cursor shape");
-    }
-    return parsed as CursorPayload;
-  } catch {
-    throw new PostServiceError("Invalid cursor", 400);
-  }
-}
 
 export async function getPostRanking(
   input: GetPostsInput
 ): Promise<PostRankingResult> {
-  const { limit, category, cursor } = input;
-  const take = limit + 1;
+  const { limit, category, page } = input;
+  const skip = (page - 1) * limit;
 
   const where: Record<string, unknown> = {};
 
@@ -67,55 +33,34 @@ export async function getPostRanking(
     };
   }
 
-  if (cursor) {
-    const decoded = decodeCursor(cursor);
-    where.OR = [
-      { reportCount: { lt: decoded.reportCount } },
-      {
-        reportCount: decoded.reportCount,
-        createdAt: { lt: new Date(decoded.createdAt) },
+  const [posts, totalCount] = await Promise.all([
+    prisma.post.findMany({
+      where,
+      orderBy: [
+        { reportCount: "desc" },
+        { createdAt: "desc" },
+        { id: "desc" },
+      ],
+      skip,
+      take: limit,
+      select: {
+        id: true,
+        headline: true,
+        sourceType: true,
+        thumbnailUrl: true,
+        reportCount: true,
+        createdAt: true,
+        reports: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: { createdAt: true },
+        },
       },
-      {
-        reportCount: decoded.reportCount,
-        createdAt: new Date(decoded.createdAt),
-        id: { lt: decoded.id },
-      },
-    ];
-  }
+    }),
+    prisma.post.count({ where }),
+  ]);
 
-  const posts = await prisma.post.findMany({
-    where,
-    orderBy: [
-      { reportCount: "desc" },
-      { createdAt: "desc" },
-      { id: "desc" },
-    ],
-    take,
-    select: {
-      id: true,
-      headline: true,
-      sourceType: true,
-      thumbnailUrl: true,
-      reportCount: true,
-      createdAt: true,
-      reports: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        select: { createdAt: true },
-      },
-    },
-  });
-
-  let nextCursor: string | null = null;
-  if (posts.length > limit) {
-    posts.pop();
-    const lastPost = posts[posts.length - 1];
-    nextCursor = encodeCursor({
-      reportCount: lastPost.reportCount,
-      createdAt: lastPost.createdAt,
-      id: lastPost.id,
-    });
-  }
+  const totalPages = Math.ceil(totalCount / limit);
 
   return {
     posts: posts.map((p) => ({
@@ -126,7 +71,9 @@ export async function getPostRanking(
       reportCount: p.reportCount,
       latestReportAt: p.reports[0]?.createdAt ?? null,
     })),
-    nextCursor,
+    totalCount,
+    page,
+    totalPages,
   };
 }
 

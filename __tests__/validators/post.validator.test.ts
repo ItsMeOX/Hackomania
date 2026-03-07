@@ -3,16 +3,25 @@ import { getPostsSchema } from "@/lib/validators/post.validator";
 describe("getPostsSchema", () => {
   it("accepts valid input with all fields", () => {
     const result = getPostsSchema.safeParse({
-      cursor: "abc123",
+      page: 2,
       limit: 20,
       category: "health-medicine",
     });
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.cursor).toBe("abc123");
+      expect(result.data.page).toBe(2);
       expect(result.data.limit).toBe(20);
       expect(result.data.category).toBe("health-medicine");
+    }
+  });
+
+  it("defaults page to 1 when not provided", () => {
+    const result = getPostsSchema.safeParse({});
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.page).toBe(1);
     }
   });
 
@@ -30,8 +39,16 @@ describe("getPostsSchema", () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.cursor).toBeUndefined();
       expect(result.data.category).toBeUndefined();
+    }
+  });
+
+  it("coerces string page to number", () => {
+    const result = getPostsSchema.safeParse({ page: "3" });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.page).toBe(3);
     }
   });
 
@@ -42,6 +59,12 @@ describe("getPostsSchema", () => {
     if (result.success) {
       expect(result.data.limit).toBe(15);
     }
+  });
+
+  it("rejects page below 1", () => {
+    const result = getPostsSchema.safeParse({ page: 0 });
+
+    expect(result.success).toBe(false);
   });
 
   it("rejects limit below 1", () => {
@@ -56,18 +79,24 @@ describe("getPostsSchema", () => {
     expect(result.success).toBe(false);
   });
 
+  it("rejects non-integer page", () => {
+    const result = getPostsSchema.safeParse({ page: 1.5 });
+
+    expect(result.success).toBe(false);
+  });
+
   it("rejects non-integer limit", () => {
     const result = getPostsSchema.safeParse({ limit: 10.5 });
 
     expect(result.success).toBe(false);
   });
 
-  it("accepts limit at lower boundary (1)", () => {
-    const result = getPostsSchema.safeParse({ limit: 1 });
+  it("accepts page at lower boundary (1)", () => {
+    const result = getPostsSchema.safeParse({ page: 1 });
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.limit).toBe(1);
+      expect(result.data.page).toBe(1);
     }
   });
 
@@ -78,13 +107,5 @@ describe("getPostsSchema", () => {
     if (result.success) {
       expect(result.data.limit).toBe(50);
     }
-  });
-
-  it("accepts cursor as any string value", () => {
-    const result = getPostsSchema.safeParse({
-      cursor: "eyJyZXBvcnRDb3VudCI6MTB9",
-    });
-
-    expect(result.success).toBe(true);
   });
 });

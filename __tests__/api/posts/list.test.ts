@@ -38,11 +38,13 @@ const mockPostData = {
       latestReportAt: new Date("2026-03-05T12:00:00Z"),
     },
   ],
-  nextCursor: null,
+  totalCount: 25,
+  page: 1,
+  totalPages: 3,
 };
 
 describe("GET /api/posts", () => {
-  it("returns 200 with posts and nextCursor", async () => {
+  it("returns 200 with posts, totalCount, page, and totalPages", async () => {
     mockGetPostRanking.mockResolvedValue(mockPostData);
 
     const response = await GET(makeGetRequest());
@@ -51,11 +53,18 @@ describe("GET /api/posts", () => {
     expect(response.status).toBe(200);
     expect(data.posts).toHaveLength(1);
     expect(data.posts[0].sourceType).toBe("WEBPAGE");
-    expect(data.nextCursor).toBeNull();
+    expect(data.totalCount).toBe(25);
+    expect(data.page).toBe(1);
+    expect(data.totalPages).toBe(3);
   });
 
   it("passes category param to service", async () => {
-    mockGetPostRanking.mockResolvedValue({ posts: [], nextCursor: null });
+    mockGetPostRanking.mockResolvedValue({
+      posts: [],
+      totalCount: 0,
+      page: 1,
+      totalPages: 0,
+    });
 
     await GET(makeGetRequest({ category: "health-medicine" }));
 
@@ -64,33 +73,33 @@ describe("GET /api/posts", () => {
     );
   });
 
-  it("passes limit param to service", async () => {
-    mockGetPostRanking.mockResolvedValue({ posts: [], nextCursor: null });
+  it("passes limit and page params to service", async () => {
+    mockGetPostRanking.mockResolvedValue({
+      posts: [],
+      totalCount: 0,
+      page: 2,
+      totalPages: 0,
+    });
 
-    await GET(makeGetRequest({ limit: "25" }));
+    await GET(makeGetRequest({ limit: "25", page: "2" }));
 
     expect(mockGetPostRanking).toHaveBeenCalledWith(
-      expect.objectContaining({ limit: 25 })
+      expect.objectContaining({ limit: 25, page: 2 })
     );
   });
 
-  it("passes cursor param to service", async () => {
-    mockGetPostRanking.mockResolvedValue({ posts: [], nextCursor: null });
-
-    await GET(makeGetRequest({ cursor: "abc123" }));
-
-    expect(mockGetPostRanking).toHaveBeenCalledWith(
-      expect.objectContaining({ cursor: "abc123" })
-    );
-  });
-
-  it("uses default limit of 10 when not specified", async () => {
-    mockGetPostRanking.mockResolvedValue({ posts: [], nextCursor: null });
+  it("uses default page 1 and limit 10 when not specified", async () => {
+    mockGetPostRanking.mockResolvedValue({
+      posts: [],
+      totalCount: 0,
+      page: 1,
+      totalPages: 0,
+    });
 
     await GET(makeGetRequest());
 
     expect(mockGetPostRanking).toHaveBeenCalledWith(
-      expect.objectContaining({ limit: 10 })
+      expect.objectContaining({ page: 1, limit: 10 })
     );
   });
 
@@ -103,6 +112,12 @@ describe("GET /api/posts", () => {
     expect(data.details).toBeDefined();
   });
 
+  it("returns 400 for invalid page value", async () => {
+    const response = await GET(makeGetRequest({ page: "0" }));
+
+    expect(response.status).toBe(400);
+  });
+
   it("returns 400 for limit exceeding max", async () => {
     const response = await GET(makeGetRequest({ limit: "100" }));
 
@@ -111,14 +126,14 @@ describe("GET /api/posts", () => {
 
   it("returns 400 when service throws PostServiceError", async () => {
     mockGetPostRanking.mockRejectedValue(
-      new PostServiceError("Invalid cursor", 400)
+      new PostServiceError("Invalid request", 400)
     );
 
-    const response = await GET(makeGetRequest({ cursor: "bad-cursor" }));
+    const response = await GET(makeGetRequest());
     const data = await response.json();
 
     expect(response.status).toBe(400);
-    expect(data.error).toBe("Invalid cursor");
+    expect(data.error).toBe("Invalid request");
   });
 
   it("returns 500 for unexpected errors", async () => {
@@ -133,26 +148,20 @@ describe("GET /api/posts", () => {
     consoleSpy.mockRestore();
   });
 
-  it("returns 200 with empty posts array when no posts exist", async () => {
-    mockGetPostRanking.mockResolvedValue({ posts: [], nextCursor: null });
-
-    const response = await GET(makeGetRequest());
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(data.posts).toEqual([]);
-  });
-
-  it("returns nextCursor when more pages are available", async () => {
+  it("returns 200 with empty posts and zero totalCount when no posts exist", async () => {
     mockGetPostRanking.mockResolvedValue({
-      posts: [mockPostData.posts[0]],
-      nextCursor: "eyJyZXBvcnRDb3VudCI6MTB9",
+      posts: [],
+      totalCount: 0,
+      page: 1,
+      totalPages: 0,
     });
 
     const response = await GET(makeGetRequest());
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.nextCursor).toBe("eyJyZXBvcnRDb3VudCI6MTB9");
+    expect(data.posts).toEqual([]);
+    expect(data.totalCount).toBe(0);
+    expect(data.totalPages).toBe(0);
   });
 });

@@ -2,19 +2,16 @@ jest.mock("@/lib/prisma", () => ({
   prisma: {
     post: {
       findMany: jest.fn(),
+      count: jest.fn(),
     },
   },
 }));
 
 import { prisma } from "@/lib/prisma";
-import {
-  getPostRanking,
-  encodeCursor,
-  decodeCursor,
-  PostServiceError,
-} from "@/lib/services/post.service";
+import { getPostRanking, PostServiceError } from "@/lib/services/post.service";
 
 const mockPostFindMany = prisma.post.findMany as jest.Mock;
+const mockPostCount = prisma.post.count as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -40,109 +37,106 @@ describe("getPostRanking", () => {
       makePost({ id: "post-2", reportCount: 5 }),
     ];
     mockPostFindMany.mockResolvedValue(posts);
+    mockPostCount.mockResolvedValue(2);
 
-    const result = await getPostRanking({ limit: 10 });
+    const result = await getPostRanking({ limit: 10, page: 1 });
 
     expect(result.posts).toHaveLength(2);
     expect(result.posts[0].id).toBe("post-1");
     expect(result.posts[1].id).toBe("post-2");
   });
 
-  it("returns nextCursor as null when fewer results than limit", async () => {
+  it("returns totalCount, page, and totalPages", async () => {
     mockPostFindMany.mockResolvedValue([makePost()]);
+    mockPostCount.mockResolvedValue(25);
 
-    const result = await getPostRanking({ limit: 10 });
+    const result = await getPostRanking({ limit: 10, page: 1 });
 
-    expect(result.nextCursor).toBeNull();
+    expect(result.totalCount).toBe(25);
+    expect(result.page).toBe(1);
+    expect(result.totalPages).toBe(3);
   });
 
-  it("returns nextCursor when more results than limit", async () => {
-    const posts = [
-      makePost({ id: "post-1", reportCount: 10 }),
-      makePost({ id: "post-2", reportCount: 5 }),
-      makePost({ id: "post-3", reportCount: 3 }),
-    ];
-    mockPostFindMany.mockResolvedValue(posts);
-
-    const result = await getPostRanking({ limit: 2 });
-
-    expect(result.posts).toHaveLength(2);
-    expect(result.nextCursor).toBeTruthy();
-  });
-
-  it("removes the extra post used for next-page detection", async () => {
-    const posts = [
-      makePost({ id: "post-1" }),
-      makePost({ id: "post-2" }),
-      makePost({ id: "post-3" }),
-    ];
-    mockPostFindMany.mockResolvedValue(posts);
-
-    const result = await getPostRanking({ limit: 2 });
-
-    expect(result.posts).toHaveLength(2);
-    expect(result.posts.map((p) => p.id)).toEqual(["post-1", "post-2"]);
-  });
-
-  it("fetches limit + 1 rows from the database", async () => {
+  it("calculates totalPages correctly for exact division", async () => {
     mockPostFindMany.mockResolvedValue([]);
+    mockPostCount.mockResolvedValue(20);
 
-    await getPostRanking({ limit: 15 });
+    const result = await getPostRanking({ limit: 10, page: 1 });
+
+    expect(result.totalPages).toBe(2);
+  });
+
+  it("uses skip for page 2", async () => {
+    mockPostFindMany.mockResolvedValue([]);
+    mockPostCount.mockResolvedValue(0);
+
+    await getPostRanking({ limit: 10, page: 2 });
 
     expect(mockPostFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({ take: 16 })
+      expect.objectContaining({ skip: 10, take: 10 })
     );
   });
 
-  it("passes category filter when provided", async () => {
+  it("uses skip for page 3 with limit 5", async () => {
     mockPostFindMany.mockResolvedValue([]);
+    mockPostCount.mockResolvedValue(0);
 
-    await getPostRanking({ limit: 10, category: "health-medicine" });
+    await getPostRanking({ limit: 5, page: 3 });
+
+    expect(mockPostFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 10, take: 5 })
+    );
+  });
+
+  it("passes category filter to both findMany and count", async () => {
+    const categoryWhere = {
+      aiPostCategories: {
+        some: { category: { slug: "health-medicine" } },
+      },
+    };
+    mockPostFindMany.mockResolvedValue([]);
+    mockPostCount.mockResolvedValue(0);
+
+    await getPostRanking({ limit: 10, page: 1, category: "health-medicine" });
 
     expect(mockPostFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({
-          aiPostCategories: {
-            some: {
-              category: { slug: "health-medicine" },
-            },
-          },
-        }),
+        where: categoryWhere,
       })
     );
+    expect(mockPostCount).toHaveBeenCalledWith({ where: categoryWhere });
   });
 
   it("does not include category filter when category is not provided", async () => {
     mockPostFindMany.mockResolvedValue([]);
+    mockPostCount.mockResolvedValue(0);
 
-    await getPostRanking({ limit: 10 });
+    await getPostRanking({ limit: 10, page: 1 });
 
-    const callArgs = mockPostFindMany.mock.calls[0][0];
-    expect(callArgs.where).not.toHaveProperty("aiPostCategories");
-  });
-
-  it("applies cursor-based where clause when cursor is provided", async () => {
-    mockPostFindMany.mockResolvedValue([]);
-    const cursor = encodeCursor({
-      reportCount: 10,
-      createdAt: new Date("2026-03-01T00:00:00Z"),
-      id: "post-uuid-1",
-    });
-
-    await getPostRanking({ limit: 10, cursor });
-
-    const callArgs = mockPostFindMany.mock.calls[0][0];
-    expect(callArgs.where).toHaveProperty("OR");
-    expect(callArgs.where.OR).toHaveLength(3);
+    const findManyArgs = mockPostFindMany.mock.calls[0][0];
+    const countArgs = mockPostCount.mock.calls[0][0];
+    expect(findManyArgs.where).not.toHaveProperty("aiPostCategories");
+    expect(countArgs.where).not.toHaveProperty("aiPostCategories");
   });
 
   it("returns empty posts array when no posts exist", async () => {
     mockPostFindMany.mockResolvedValue([]);
+    mockPostCount.mockResolvedValue(0);
 
-    const result = await getPostRanking({ limit: 10 });
+    const result = await getPostRanking({ limit: 10, page: 1 });
 
     expect(result.posts).toEqual([]);
-    expect(result.nextCursor).toBeNull();
+    expect(result.totalCount).toBe(0);
+    expect(result.totalPages).toBe(0);
+  });
+
+  it("returns totalPages 1 when totalCount is less than limit", async () => {
+    mockPostFindMany.mockResolvedValue([makePost()]);
+    mockPostCount.mockResolvedValue(1);
+
+    const result = await getPostRanking({ limit: 10, page: 1 });
+
+    expect(result.totalPages).toBe(1);
   });
 
   it("maps latestReportAt from the most recent report", async () => {
@@ -150,24 +144,27 @@ describe("getPostRanking", () => {
     mockPostFindMany.mockResolvedValue([
       makePost({ reports: [{ createdAt: reportDate }] }),
     ]);
+    mockPostCount.mockResolvedValue(1);
 
-    const result = await getPostRanking({ limit: 10 });
+    const result = await getPostRanking({ limit: 10, page: 1 });
 
     expect(result.posts[0].latestReportAt).toEqual(reportDate);
   });
 
   it("returns null latestReportAt when post has no reports", async () => {
     mockPostFindMany.mockResolvedValue([makePost({ reports: [] })]);
+    mockPostCount.mockResolvedValue(1);
 
-    const result = await getPostRanking({ limit: 10 });
+    const result = await getPostRanking({ limit: 10, page: 1 });
 
     expect(result.posts[0].latestReportAt).toBeNull();
   });
 
   it("orders by reportCount desc, createdAt desc, id desc", async () => {
     mockPostFindMany.mockResolvedValue([]);
+    mockPostCount.mockResolvedValue(0);
 
-    await getPostRanking({ limit: 10 });
+    await getPostRanking({ limit: 10, page: 1 });
 
     expect(mockPostFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -182,8 +179,9 @@ describe("getPostRanking", () => {
 
   it("selects only required fields for the response", async () => {
     mockPostFindMany.mockResolvedValue([]);
+    mockPostCount.mockResolvedValue(0);
 
-    await getPostRanking({ limit: 10 });
+    await getPostRanking({ limit: 10, page: 1 });
 
     const selectArg = mockPostFindMany.mock.calls[0][0].select;
     expect(selectArg).toHaveProperty("id");
@@ -194,47 +192,6 @@ describe("getPostRanking", () => {
     expect(selectArg).toHaveProperty("reports");
     expect(selectArg).not.toHaveProperty("scrapedContent");
     expect(selectArg).not.toHaveProperty("aiSummary");
-  });
-});
-
-describe("encodeCursor / decodeCursor", () => {
-  it("roundtrips cursor encoding and decoding", () => {
-    const input = {
-      reportCount: 42,
-      createdAt: new Date("2026-03-01T00:00:00Z"),
-      id: "post-uuid-1",
-    };
-
-    const encoded = encodeCursor(input);
-    const decoded = decodeCursor(encoded);
-
-    expect(decoded.reportCount).toBe(42);
-    expect(decoded.createdAt).toBe("2026-03-01T00:00:00.000Z");
-    expect(decoded.id).toBe("post-uuid-1");
-  });
-
-  it("produces a base64url string", () => {
-    const encoded = encodeCursor({
-      reportCount: 1,
-      createdAt: new Date(),
-      id: "test",
-    });
-
-    expect(encoded).toMatch(/^[A-Za-z0-9_-]+$/);
-  });
-
-  it("throws PostServiceError for invalid cursor string", () => {
-    expect(() => decodeCursor("not-valid-base64-json")).toThrow(
-      PostServiceError
-    );
-  });
-
-  it("throws PostServiceError for cursor with missing fields", () => {
-    const incomplete = Buffer.from(
-      JSON.stringify({ reportCount: 1 })
-    ).toString("base64url");
-
-    expect(() => decodeCursor(incomplete)).toThrow(PostServiceError);
   });
 });
 

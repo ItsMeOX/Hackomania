@@ -8,7 +8,7 @@ import {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const rawParams = {
-    cursor: searchParams.get("cursor") ?? undefined,
+    page: searchParams.get("page") ?? undefined,
     limit: searchParams.get("limit") ?? undefined,
     category: searchParams.get("category") ?? undefined,
   };
