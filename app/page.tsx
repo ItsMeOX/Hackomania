@@ -1,34 +1,26 @@
 import Image from 'next/image';
 import styles from './home.module.css';
-import { CategoryRankingApiResponse, PopularClaim } from '@/types/types';
+import { PopularClaim } from '@/types/types';
 import PopularClaims from '@/components/home/PopularClaims';
 import Link from 'next/link';
-import { getApiBaseUrl } from '@/lib/api-base-url';
+import { getCategoryRanking } from '@/lib/services/category-ranking.service';
 import { mapSourceTypeToClaimSource } from '@/app/utils/mapSourceType';
 
 const POPULAR_CATEGORIES_LIMIT = 3;
 const FALLBACK_THUMBNAIL = '/medical_claim.png';
 
 async function fetchPopularClaims(): Promise<PopularClaim[]> {
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}/api/categories/ranking?limit=${POPULAR_CATEGORIES_LIMIT}`;
-  const response = await fetch(url, { next: { revalidate: 60 } });
+  const result = await getCategoryRanking({ limit: POPULAR_CATEGORIES_LIMIT });
 
-  if (!response.ok) {
-    throw new Error(`Failed to load categories: ${response.status}`);
-  }
-
-  const data = (await response.json()) as CategoryRankingApiResponse;
-
-  return data.categories.map((row) => {
+  return result.categories.map((row) => {
     const firstPost = row.posts[0];
     const thumbnailUrl =
       firstPost?.thumbnailUrl ?? FALLBACK_THUMBNAIL;
-    const posts = row.posts.slice(0,3).map((p) => ({
+    const posts = row.posts.slice(0, 3).map((p) => ({
       id: p.id,
       title: p.headline ?? 'Untitled',
       sourceType: mapSourceTypeToClaimSource(p.sourceType),
-      time: new Date(p.latestReportAt!),
+      time: new Date(p.latestReportAt ?? 0),
       reportCount: p.reportCount,
     }));
 
